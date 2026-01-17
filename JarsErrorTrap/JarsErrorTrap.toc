@@ -1,0 +1,8 @@
+## Interface: 120000
+## Title: Jar's Error Trap
+## Notes: Captures Lua errors and displays them in a review window
+## Author: Jar
+## Version: 1.0.0
+## SavedVariables: JarsErrorTrapDB
+
+JarsErrorTrap.lua
