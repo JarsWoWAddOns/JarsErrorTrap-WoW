@@ -40,7 +40,7 @@ local function CreateIcon()
     -- Background
     icon.bg = icon:CreateTexture(nil, "BACKGROUND")
     icon.bg:SetSize(20, 20)
-    icon.bg:SetPoint("CENTER")
+    icon.bg:SetPoint("CENTER", -10, 10)
     icon.bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
     
     -- Icon texture (exclamation mark style)
