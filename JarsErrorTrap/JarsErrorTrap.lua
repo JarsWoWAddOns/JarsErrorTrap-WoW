@@ -6,15 +6,20 @@ local function InitDB()
     if not JarsErrorTrapDB then
         JarsErrorTrapDB = {
             errors = {},
-            maxErrors = 100,
+            maxErrors = 1000,
             minimapAngle = 45,
         }
+    end
+    -- Update maxErrors if it was set to old default
+    if JarsErrorTrapDB.maxErrors == 100 then
+        JarsErrorTrapDB.maxErrors = 1000
     end
 end
 
 -- Error storage
 local errorLog = {}
 local errorCount = 0
+local MAX_ERRORS = 1000  -- Hard limit on total errors captured
 
 -- Forward declarations
 local iconFrame
@@ -66,7 +71,12 @@ local function CreateIcon()
     icon:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("Jar's Error Trap")
-        GameTooltip:AddLine(errorCount .. " errors captured", 1, 1, 1)
+        if errorCount >= MAX_ERRORS then
+            GameTooltip:AddLine(errorCount .. " errors captured (LIMIT REACHED)", 1, 0, 0)
+            GameTooltip:AddLine("No new errors will be captured", 1, 0.5, 0)
+        else
+            GameTooltip:AddLine(errorCount .. " errors captured", 1, 1, 1)
+        end
         GameTooltip:AddLine("Click to view errors", 0.5, 0.5, 1)
         GameTooltip:AddLine("Right-click to clear", 1, 0.5, 0.5)
         GameTooltip:AddLine("Drag to move", 0.7, 0.7, 0.7)
@@ -88,6 +98,7 @@ local function CreateIcon()
             errorCount = 0
             JarsErrorTrapDB.errors = {}
             icon.count:SetText("0")
+            icon.count:SetTextColor(1, 1, 1)
             if errorFrame then
                 errorFrame:Update()
             end
@@ -195,7 +206,18 @@ local function CreateErrorFrame()
     
     frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     frame.title:SetPoint("TOP", 0, -5)
-    frame.title:SetText("Jar's Error Trap - Captured Errors")
+    
+    -- Update title to show limit status
+    frame.UpdateTitle = function(self)
+        if errorCount >= MAX_ERRORS then
+            self.title:SetText("Jar's Error Trap - " .. errorCount .. " Errors (LIMIT REACHED)")
+            self.title:SetTextColor(1, 0.3, 0.3)
+        else
+            self.title:SetText("Jar's Error Trap - " .. errorCount .. " Errors")
+            self.title:SetTextColor(1, 0.82, 0)
+        end
+    end
+    frame:UpdateTitle()
     
     -- Scroll frame
     local scrollFrame = CreateFrame("ScrollFrame", "JET_ScrollFrame", frame, "UIPanelScrollFrameTemplate")
@@ -222,6 +244,7 @@ local function CreateErrorFrame()
         JarsErrorTrapDB.errors = {}
         if iconFrame then
             iconFrame.count:SetText("0")
+            iconFrame.count:SetTextColor(1, 1, 1)
         end
         frame:Update()
     end)
@@ -231,6 +254,9 @@ local function CreateErrorFrame()
     
     -- Update function to rebuild error list
     frame.Update = function(self)
+        -- Update title with current count
+        self:UpdateTitle()
+        
         -- Clear existing error displays
         for _, child in ipairs({self.content:GetChildren()}) do
             child:Hide()
@@ -353,6 +379,12 @@ end
 
 -- Custom error handler
 local function ErrorHandler(errMsg)
+    -- Check if we've hit the error limit
+    if errorCount >= MAX_ERRORS then
+        -- Discard new errors once we hit the limit
+        return errMsg
+    end
+    
     -- Capture the error
     local stack = debugstack(3)  -- Skip error handler frames
     local timestamp = date("%H:%M:%S")
@@ -366,15 +398,21 @@ local function ErrorHandler(errMsg)
     table.insert(errorLog, error)
     errorCount = errorCount + 1
     
-    -- Update saved variables (keep last 100)
+    -- Update saved variables (keep last 1000)
     table.insert(JarsErrorTrapDB.errors, error)
-    if #JarsErrorTrapDB.errors > (JarsErrorTrapDB.maxErrors or 100) then
+    if #JarsErrorTrapDB.errors > (JarsErrorTrapDB.maxErrors or MAX_ERRORS) then
         table.remove(JarsErrorTrapDB.errors, 1)
     end
     
     -- Update icon count
     if iconFrame then
-        iconFrame.count:SetText(tostring(errorCount))
+        if errorCount >= MAX_ERRORS then
+            iconFrame.count:SetText("MAX")
+            iconFrame.count:SetTextColor(1, 0, 0)
+        else
+            iconFrame.count:SetText(tostring(errorCount))
+            iconFrame.count:SetTextColor(1, 1, 1)
+        end
     end
     
     -- Update error frame if visible
@@ -437,6 +475,7 @@ SlashCmdList["JARSERRORTRAP"] = function(msg)
         JarsErrorTrapDB.errors = {}
         if iconFrame then
             iconFrame.count:SetText("0")
+            iconFrame.count:SetTextColor(1, 1, 1)
         end
         if errorFrame then
             errorFrame:Update()
