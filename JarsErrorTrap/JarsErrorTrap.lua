@@ -253,19 +253,20 @@ local function CreateErrorFrame()
     frame.errorDetailFrame = nil
     
     -- Update function to rebuild error list
+    frame._errorBoxPool = frame._errorBoxPool or {}
     frame.Update = function(self)
         -- Update title with current count
         self:UpdateTitle()
-        
-        -- Clear existing error displays
+
+        -- Recycle existing error displays back to pool
         for _, child in ipairs({self.content:GetChildren()}) do
             child:Hide()
-            child:SetParent(nil)
+            table.insert(self._errorBoxPool, child)
         end
         
         local yOffset = -5
         for i = #errorLog, 1, -1 do  -- Reverse order, newest first
-            local error = errorLog[i]
+            local errEntry = errorLog[i]
             
             -- Check if this error is expanded
             local isExpanded = self.expandedErrors[i] or false
@@ -298,7 +299,7 @@ local function CreateErrorFrame()
             -- Timestamp
             errorBox.time = errorBox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             errorBox.time:SetPoint("LEFT", errorBox.expandBtn, "RIGHT", 5, 0)
-            errorBox.time:SetText(error.time)
+            errorBox.time:SetText(errEntry.time)
             errorBox.time:SetTextColor(0.7, 0.7, 0.7)
             
             -- Error count badge
@@ -316,7 +317,7 @@ local function CreateErrorFrame()
                 if not self.errorDetailFrame then
                     self.errorDetailFrame = CreateErrorDetailFrame()
                 end
-                self.errorDetailFrame:ShowError(error)
+                self.errorDetailFrame:ShowError(errEntry)
             end)
             
             -- Error message (always visible)
@@ -324,7 +325,7 @@ local function CreateErrorFrame()
             errorBox.message:SetPoint("LEFT", errorBox.time, "RIGHT", 5, 0)
             errorBox.message:SetPoint("RIGHT", errorBox.countText, "LEFT", -5, 0)
             errorBox.message:SetJustifyH("LEFT")
-            errorBox.message:SetText(error.message)
+            errorBox.message:SetText(errEntry.message)
             errorBox.message:SetTextColor(1, 0.3, 0.3)
             
             -- Stack trace container (initially hidden)
@@ -340,12 +341,12 @@ local function CreateErrorFrame()
                 errorBox.message:SetMaxLines(1)
             end
             
-            if error.stack then
+            if errEntry.stack then
                 errorBox.stack = errorBox.stackContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
                 errorBox.stack:SetPoint("TOPLEFT")
                 errorBox.stack:SetPoint("RIGHT")
                 errorBox.stack:SetJustifyH("LEFT")
-                errorBox.stack:SetText(error.stack)
+                errorBox.stack:SetText(errEntry.stack)
                 errorBox.stack:SetTextColor(0.8, 0.8, 0.8)
                 
                 -- Calculate stack trace height
@@ -389,17 +390,17 @@ local function ErrorHandler(errMsg)
     local stack = debugstack(3)  -- Skip error handler frames
     local timestamp = date("%H:%M:%S")
     
-    local error = {
+    local errorEntry = {
         message = tostring(errMsg),
         stack = stack,
         time = timestamp,
     }
-    
-    table.insert(errorLog, error)
+
+    table.insert(errorLog, errorEntry)
     errorCount = errorCount + 1
-    
+
     -- Update saved variables (keep last 1000)
-    table.insert(JarsErrorTrapDB.errors, error)
+    table.insert(JarsErrorTrapDB.errors, errorEntry)
     if #JarsErrorTrapDB.errors > (JarsErrorTrapDB.maxErrors or MAX_ERRORS) then
         table.remove(JarsErrorTrapDB.errors, 1)
     end
@@ -420,9 +421,24 @@ local function ErrorHandler(errMsg)
         errorFrame:Update()
     end
     
-    -- Flash the icon
+    -- Flash the icon safely (avoid UIFrameFlash which may be deprecated)
     if iconFrame then
-        UIFrameFlash(iconFrame, 0.3, 0.3, 0.5, true, 0, 0)
+        if not iconFrame.flashAnim then
+            iconFrame.flashAnim = iconFrame:CreateAnimationGroup()
+            local fadeOut = iconFrame.flashAnim:CreateAnimation("Alpha")
+            fadeOut:SetFromAlpha(1)
+            fadeOut:SetToAlpha(0.3)
+            fadeOut:SetDuration(0.3)
+            fadeOut:SetOrder(1)
+            local fadeIn = iconFrame.flashAnim:CreateAnimation("Alpha")
+            fadeIn:SetFromAlpha(0.3)
+            fadeIn:SetToAlpha(1)
+            fadeIn:SetDuration(0.3)
+            fadeIn:SetOrder(2)
+        end
+        if not iconFrame.flashAnim:IsPlaying() then
+            iconFrame.flashAnim:Play()
+        end
     end
     
     -- Return the error message (suppress display)
