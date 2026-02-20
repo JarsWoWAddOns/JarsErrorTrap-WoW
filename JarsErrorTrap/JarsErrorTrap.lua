@@ -1,6 +1,22 @@
 -- Jar's Error Trap
 -- Captures Lua errors silently and displays them in a review window
 
+-- Modern UI Color Palette
+local UI_PALETTE = {
+    bg = {0.10, 0.10, 0.12, 0.95},
+    header = {0.15, 0.15, 0.18, 1},
+    accent = {0.30, 0.75, 0.75, 1},
+    text = {0.95, 0.95, 0.95, 1},
+    textDim = {0.70, 0.70, 0.70, 1},
+    border = {0.20, 0.20, 0.22, 1},
+}
+
+local modernBackdrop = {
+    bgFile = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Buttons\\WHITE8X8",
+    edgeSize = 1,
+}
+
 -- Initialize saved variables
 local function InitDB()
     if not JarsErrorTrapDB then
@@ -134,7 +150,7 @@ end
 
 -- Create error detail window
 local function CreateErrorDetailFrame()
-    local detailFrame = CreateFrame("Frame", "JET_ErrorDetailFrame", UIParent, "BasicFrameTemplateWithInset")
+    local detailFrame = CreateFrame("Frame", "JET_ErrorDetailFrame", UIParent, "BackdropTemplate")
     detailFrame:SetSize(650, 450)
     detailFrame:SetPoint("LEFT", "JET_ErrorFrame", "RIGHT", 10, 0)
     detailFrame:SetFrameStrata("FULLSCREEN")
@@ -146,14 +162,52 @@ local function CreateErrorDetailFrame()
     detailFrame:SetClampedToScreen(true)
     detailFrame:Hide()
     
-    detailFrame.title = detailFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    detailFrame.title:SetPoint("TOP", 0, -5)
+    -- Modern background
+    detailFrame:SetBackdrop(modernBackdrop)
+    detailFrame:SetBackdropColor(unpack(UI_PALETTE.bg))
+    detailFrame:SetBackdropBorderColor(unpack(UI_PALETTE.border))
+    
+    -- Title bar with teal accent
+    local titleBar = detailFrame:CreateTexture(nil, "OVERLAY")
+    titleBar:SetPoint("TOPLEFT", 1, -1)
+    titleBar:SetPoint("TOPRIGHT", -1, -1)
+    titleBar:SetHeight(32)
+    titleBar:SetColorTexture(UI_PALETTE.header[1], UI_PALETTE.header[2], UI_PALETTE.header[3], UI_PALETTE.header[4])
+    
+    local titleAccent = detailFrame:CreateTexture(nil, "OVERLAY")
+    titleAccent:SetPoint("TOPLEFT", titleBar, "BOTTOMLEFT", 0, 0)
+    titleAccent:SetPoint("TOPRIGHT", titleBar, "BOTTOMRIGHT", 0, 0)
+    titleAccent:SetHeight(2)
+    titleAccent:SetColorTexture(UI_PALETTE.accent[1], UI_PALETTE.accent[2], UI_PALETTE.accent[3], UI_PALETTE.accent[4])
+    
+    detailFrame.title = detailFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    detailFrame.title:SetPoint("TOP", titleBar, "TOP", 0, -8)
     detailFrame.title:SetText("Error Details")
+    detailFrame.title:SetTextColor(UI_PALETTE.text[1], UI_PALETTE.text[2], UI_PALETTE.text[3])
+    
+    -- Modern close button
+    local closeBtn = CreateFrame("Button", nil, detailFrame)
+    closeBtn:SetSize(20, 20)
+    closeBtn:SetPoint("TOPRIGHT", -6, -6)
+    local closeBtnBg = closeBtn:CreateTexture(nil, "BACKGROUND")
+    closeBtnBg:SetAllPoints()
+    closeBtnBg:SetColorTexture(0.05, 0.05, 0.05, 0.8)
+    local closeBtnText = closeBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    closeBtnText:SetPoint("CENTER", 0, 1)
+    closeBtnText:SetText("✕")
+    closeBtnText:SetTextColor(UI_PALETTE.textDim[1], UI_PALETTE.textDim[2], UI_PALETTE.textDim[3])
+    closeBtn:SetScript("OnEnter", function(self)
+        closeBtnText:SetTextColor(UI_PALETTE.accent[1], UI_PALETTE.accent[2], UI_PALETTE.accent[3])
+    end)
+    closeBtn:SetScript("OnLeave", function(self)
+        closeBtnText:SetTextColor(UI_PALETTE.textDim[1], UI_PALETTE.textDim[2], UI_PALETTE.textDim[3])
+    end)
+    closeBtn:SetScript("OnClick", function() detailFrame:Hide() end)
     
     -- Scrollable edit box for error text
     local scrollFrame = CreateFrame("ScrollFrame", "JET_DetailScrollFrame", detailFrame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", 10, -30)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -30, 40)
+    scrollFrame:SetPoint("TOPLEFT", 10, -40)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -30, 10)
     
     local editBox = CreateFrame("EditBox", nil, scrollFrame)
     editBox:SetMultiLine(true)
@@ -166,13 +220,6 @@ local function CreateErrorDetailFrame()
     
     scrollFrame:SetScrollChild(editBox)
     detailFrame.editBox = editBox
-    
-    -- Close button
-    local closeBtn = CreateFrame("Button", nil, detailFrame, "GameMenuButtonTemplate")
-    closeBtn:SetSize(80, 25)
-    closeBtn:SetPoint("BOTTOM", 0, 10)
-    closeBtn:SetText("Close")
-    closeBtn:SetScript("OnClick", function() detailFrame:Hide() end)
     
     -- Function to show error
     detailFrame.ShowError = function(self, error)
@@ -188,7 +235,7 @@ end
 
 -- Create error review window
 local function CreateErrorFrame()
-    local frame = CreateFrame("Frame", "JET_ErrorFrame", UIParent, "BasicFrameTemplateWithInset")
+    local frame = CreateFrame("Frame", "JET_ErrorFrame", UIParent, "BackdropTemplate")
     frame:SetSize(650, 600)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
@@ -199,29 +246,66 @@ local function CreateErrorFrame()
     frame:SetClampedToScreen(true)
     frame:Hide()
     
+    -- Modern background
+    frame:SetBackdrop(modernBackdrop)
+    frame:SetBackdropColor(unpack(UI_PALETTE.bg))
+    frame:SetBackdropBorderColor(unpack(UI_PALETTE.border))
+    
+    -- Title bar with teal accent
+    local titleBar = frame:CreateTexture(nil, "OVERLAY")
+    titleBar:SetPoint("TOPLEFT", 1, -1)
+    titleBar:SetPoint("TOPRIGHT", -1, -1)
+    titleBar:SetHeight(32)
+    titleBar:SetColorTexture(UI_PALETTE.header[1], UI_PALETTE.header[2], UI_PALETTE.header[3], UI_PALETTE.header[4])
+    
+    local titleAccent = frame:CreateTexture(nil, "OVERLAY")
+    titleAccent:SetPoint("TOPLEFT", titleBar, "BOTTOMLEFT", 0, 0)
+    titleAccent:SetPoint("TOPRIGHT", titleBar, "BOTTOMRIGHT", 0, 0)
+    titleAccent:SetHeight(2)
+    titleAccent:SetColorTexture(UI_PALETTE.accent[1], UI_PALETTE.accent[2], UI_PALETTE.accent[3], UI_PALETTE.accent[4])
+    
+    frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    frame.title:SetPoint("TOP", titleBar, "TOP", 0, -8)
+    
+    -- Modern close button
+    local closeBtn = CreateFrame("Button", nil, frame)
+    closeBtn:SetSize(20, 20)
+    closeBtn:SetPoint("TOPRIGHT", -6, -6)
+    local closeBtnBg = closeBtn:CreateTexture(nil, "BACKGROUND")
+    closeBtnBg:SetAllPoints()
+    closeBtnBg:SetColorTexture(0.05, 0.05, 0.05, 0.8)
+    local closeBtnText = closeBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    closeBtnText:SetPoint("CENTER", 0, 1)
+    closeBtnText:SetText("✕")
+    closeBtnText:SetTextColor(UI_PALETTE.textDim[1], UI_PALETTE.textDim[2], UI_PALETTE.textDim[3])
+    closeBtn:SetScript("OnEnter", function(self)
+        closeBtnText:SetTextColor(UI_PALETTE.accent[1], UI_PALETTE.accent[2], UI_PALETTE.accent[3])
+    end)
+    closeBtn:SetScript("OnLeave", function(self)
+        closeBtnText:SetTextColor(UI_PALETTE.textDim[1], UI_PALETTE.textDim[2], UI_PALETTE.textDim[3])
+    end)
+    closeBtn:SetScript("OnClick", function() frame:Hide() end)
+    
     -- Refresh error list when shown
     frame:SetScript("OnShow", function(self)
         self:Update()
     end)
     
-    frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    frame.title:SetPoint("TOP", 0, -5)
-    
     -- Update title to show limit status
     frame.UpdateTitle = function(self)
         if errorCount >= MAX_ERRORS then
             self.title:SetText("Jar's Error Trap - " .. errorCount .. " Errors (LIMIT REACHED)")
-            self.title:SetTextColor(1, 0.3, 0.3)
+            self.title:SetTextColor(UI_PALETTE.accent[1], UI_PALETTE.accent[2], UI_PALETTE.accent[3])
         else
             self.title:SetText("Jar's Error Trap - " .. errorCount .. " Errors")
-            self.title:SetTextColor(1, 0.82, 0)
+            self.title:SetTextColor(UI_PALETTE.text[1], UI_PALETTE.text[2], UI_PALETTE.text[3])
         end
     end
     frame:UpdateTitle()
     
     -- Scroll frame
     local scrollFrame = CreateFrame("ScrollFrame", "JET_ScrollFrame", frame, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", 10, -30)
+    scrollFrame:SetPoint("TOPLEFT", 10, -40)
     scrollFrame:SetPoint("BOTTOMRIGHT", -30, 40)
     
     -- Content frame
